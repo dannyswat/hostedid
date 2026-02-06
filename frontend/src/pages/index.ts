@@ -1,0 +1,10 @@
+export { LoginPage } from './LoginPage';
+export { RegisterPage } from './RegisterPage';
+export { ForgotPasswordPage } from './ForgotPasswordPage';
+export { ResetPasswordPage } from './ResetPasswordPage';
+export { MFAVerifyPage } from './MFAVerifyPage';
+export { DashboardPage } from './DashboardPage';
+export { ProfilePage } from './ProfilePage';
+export { SecurityPage } from './SecurityPage';
+export { DevicesPage } from './DevicesPage';
+export { SessionsPage } from './SessionsPage';
