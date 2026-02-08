@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -58,13 +59,25 @@ func readJSON(r *http.Request, v interface{}) error {
 
 // getClientIP extracts the client IP address from the request
 func getClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header (may contain multiple IPs)
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		// Take the first IP in case of multiple proxy hops
+		if idx := strings.Index(forwarded, ","); idx != -1 {
+			forwarded = strings.TrimSpace(forwarded[:idx])
+		}
 		return forwarded
 	}
+	// Check X-Real-IP header
 	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
 		return realIP
 	}
-	return r.RemoteAddr
+	// Fall back to RemoteAddr, but strip the port
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		// If SplitHostPort fails, it might be just an IP without port
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // --- Cookie helpers ---
