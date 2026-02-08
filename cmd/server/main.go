@@ -12,6 +12,7 @@ import (
 	"github.com/hostedid/hostedid/internal/auth"
 	"github.com/hostedid/hostedid/internal/config"
 	"github.com/hostedid/hostedid/internal/database"
+	"github.com/hostedid/hostedid/internal/email"
 	"github.com/hostedid/hostedid/internal/handler"
 	"github.com/hostedid/hostedid/internal/logger"
 	"github.com/hostedid/hostedid/internal/middleware"
@@ -75,7 +76,51 @@ func main() {
 	log.Info().Str("algorithm", cfg.Security.Tokens.SigningAlgorithm).Msg("token service initialized")
 
 	// Initialize services
-	authSvc := service.NewAuthService(userRepo, tokenRepo, deviceRepo, auditRepo, passwordResetRepo, mfaRepo, tokenSvc, cfg, log)
+	// Initialize email sender (if configured)
+	var emailSender email.Sender
+	var emailVerifySvc *service.EmailVerificationService
+
+	if cfg.EmailVerification.Enabled {
+		switch cfg.Email.Provider {
+		case "gmail":
+			gmailCfg := cfg.Email.Gmail
+			if gmailCfg.CredentialsJSON != "" {
+				sender, err := email.NewGmailSender(context.Background(), email.GmailConfig{
+					CredentialsJSON: gmailCfg.CredentialsJSON,
+					SenderAddress:   gmailCfg.SenderAddress,
+					SenderName:      gmailCfg.SenderName,
+				})
+				if err != nil {
+					log.Fatal().Err(err).Msg("failed to initialize Gmail sender (service account)")
+				}
+				emailSender = sender
+			} else if gmailCfg.ClientID != "" && gmailCfg.RefreshToken != "" {
+				sender, err := email.NewGmailSenderWithToken(
+					context.Background(),
+					gmailCfg.ClientID,
+					gmailCfg.ClientSecret,
+					gmailCfg.RefreshToken,
+					gmailCfg.SenderAddress,
+					gmailCfg.SenderName,
+				)
+				if err != nil {
+					log.Fatal().Err(err).Msg("failed to initialize Gmail sender (OAuth2)")
+				}
+				emailSender = sender
+			} else {
+				log.Fatal().Msg("email verification is enabled but Gmail credentials are not configured")
+			}
+		default:
+			log.Fatal().Str("provider", cfg.Email.Provider).Msg("unsupported email provider")
+		}
+
+		emailVerifySvc = service.NewEmailVerificationService(rdb, userRepo, emailSender, cfg, log)
+		log.Info().Str("provider", cfg.Email.Provider).Msg("email verification service initialized")
+	} else {
+		log.Info().Msg("email verification is disabled")
+	}
+
+	authSvc := service.NewAuthService(userRepo, tokenRepo, deviceRepo, auditRepo, passwordResetRepo, mfaRepo, tokenSvc, emailVerifySvc, cfg, log)
 
 	// Initialize MFA service
 	mfaSvc, err := service.NewMFAService(mfaRepo, userRepo, cfg, log)
@@ -97,7 +142,7 @@ func main() {
 	log.Info().Msg("back-channel logout service initialized")
 
 	// Initialize handlers
-	h := handler.New(db, rdb, log, cfg, authSvc, keySvc, mfaSvc, deviceSvc, sessionSvc, backChannelSvc)
+	h := handler.New(db, rdb, log, cfg, authSvc, keySvc, mfaSvc, deviceSvc, sessionSvc, backChannelSvc, emailVerifySvc)
 
 	// Initialize middleware
 	mw := middleware.New(rdb, log, cfg)

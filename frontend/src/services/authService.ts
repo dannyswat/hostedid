@@ -9,6 +9,9 @@ import type {
   PasswordResetComplete,
   User,
   Device,
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+  ResendVerificationRequest,
 } from '../types';
 
 export const authService = {
@@ -128,7 +131,22 @@ export const authService = {
   },
 
   /**
-   * Verify email with token
+   * Verify email with OTP code
+   */
+  async verifyEmailOTP(data: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+    const response = await api.post<VerifyEmailResponse>('/auth/email/verify', data);
+    return response.data;
+  },
+
+  /**
+   * Resend verification OTP
+   */
+  async resendVerificationOTP(data: ResendVerificationRequest): Promise<void> {
+    await api.post('/auth/email/resend', data);
+  },
+
+  /**
+   * Verify email with token (legacy)
    */
   async verifyEmail(token: string): Promise<void> {
     await api.post('/users/me/email/verify', { token });

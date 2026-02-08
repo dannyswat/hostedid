@@ -104,6 +104,20 @@ func (r *UserRepository) UpdatePasswordHash(ctx context.Context, id string, hash
 	return nil
 }
 
+// VerifyEmail marks the user's email as verified
+func (r *UserRepository) VerifyEmail(ctx context.Context, id string) error {
+	query := `UPDATE users SET email_verified = true, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`
+	result, err := r.db.ExecContext(ctx, query, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("failed to verify email: %w", err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // IncrementFailedAttempts increments the failed login attempts counter
 func (r *UserRepository) IncrementFailedAttempts(ctx context.Context, id string) (int, error) {
 	query := `

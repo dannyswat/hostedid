@@ -19,10 +19,11 @@ type Handler struct {
 	deviceSvc      *service.DeviceService
 	sessionSvc     *service.SessionService
 	backChannelSvc *service.BackChannelLogoutService
+	emailVerifySvc *service.EmailVerificationService
 }
 
 // New creates a new Handler instance
-func New(db *database.Postgres, rdb *database.Redis, log *logger.Logger, cfg *config.Config, authSvc *service.AuthService, keySvc *service.KeyService, mfaSvc *service.MFAService, deviceSvc *service.DeviceService, sessionSvc *service.SessionService, backChannelSvc *service.BackChannelLogoutService) *Handler {
+func New(db *database.Postgres, rdb *database.Redis, log *logger.Logger, cfg *config.Config, authSvc *service.AuthService, keySvc *service.KeyService, mfaSvc *service.MFAService, deviceSvc *service.DeviceService, sessionSvc *service.SessionService, backChannelSvc *service.BackChannelLogoutService, emailVerifySvc *service.EmailVerificationService) *Handler {
 	return &Handler{
 		db:             db,
 		rdb:            rdb,
@@ -34,5 +35,6 @@ func New(db *database.Postgres, rdb *database.Redis, log *logger.Logger, cfg *co
 		deviceSvc:      deviceSvc,
 		sessionSvc:     sessionSvc,
 		backChannelSvc: backChannelSvc,
+		emailVerifySvc: emailVerifySvc,
 	}
 }

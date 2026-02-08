@@ -45,6 +45,20 @@ func New(h *handler.Handler, mw *middleware.Middleware, log *logger.Logger, toke
 	mux.Handle("POST /api/v1/auth/login", loginRateLimit(http.HandlerFunc(h.Login)))
 	mux.Handle("POST /api/v1/auth/token/refresh", refreshRateLimit(http.HandlerFunc(h.RefreshToken)))
 
+	// Email verification routes (public, rate limited)
+	emailVerifyRateLimit := mw.RateLimit(middleware.RateLimitConfig{
+		Limit:  5,
+		Window: 15 * time.Minute,
+		KeyFn:  middleware.IPKey,
+	})
+	emailResendRateLimit := mw.RateLimit(middleware.RateLimitConfig{
+		Limit:  3,
+		Window: 5 * time.Minute,
+		KeyFn:  middleware.IPKey,
+	})
+	mux.Handle("POST /api/v1/auth/email/verify", emailVerifyRateLimit(http.HandlerFunc(h.VerifyEmail)))
+	mux.Handle("POST /api/v1/auth/email/resend", emailResendRateLimit(http.HandlerFunc(h.ResendVerificationOTP)))
+
 	// Password reset routes (public, rate limited)
 	passwordResetRateLimit := mw.RateLimit(middleware.RateLimitConfig{
 		Limit:  3,

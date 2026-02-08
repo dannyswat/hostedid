@@ -4,6 +4,7 @@ import { AuthLayout, DashboardLayout } from './components/layout';
 import {
   LoginPage,
   RegisterPage,
+  EmailVerifyPage,
   ForgotPasswordPage,
   ResetPasswordPage,
   MFAVerifyPage,
@@ -21,6 +22,7 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<EmailVerifyPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/mfa-verify" element={<MFAVerifyPage />} />

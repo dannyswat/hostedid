@@ -44,6 +44,7 @@ type AuthService struct {
 	passwordResetRepo *repository.PasswordResetRepository
 	mfaRepo           *repository.MFARepository
 	tokenSvc          *auth.TokenService
+	emailVerifySvc    *EmailVerificationService
 	argonParams       *auth.Argon2Params
 	cfg               *config.Config
 	log               *logger.Logger
@@ -58,6 +59,7 @@ func NewAuthService(
 	passwordResetRepo *repository.PasswordResetRepository,
 	mfaRepo *repository.MFARepository,
 	tokenSvc *auth.TokenService,
+	emailVerifySvc *EmailVerificationService,
 	cfg *config.Config,
 	log *logger.Logger,
 ) *AuthService {
@@ -69,6 +71,7 @@ func NewAuthService(
 		passwordResetRepo: passwordResetRepo,
 		mfaRepo:           mfaRepo,
 		tokenSvc:          tokenSvc,
+		emailVerifySvc:    emailVerifySvc,
 		argonParams: auth.NewParams(
 			cfg.Security.Password.Argon2Memory,
 			cfg.Security.Password.Argon2Iterations,
@@ -90,10 +93,11 @@ type RegisterRequest struct {
 
 // RegisterResponse contains the response from a registration
 type RegisterResponse struct {
-	UserID             string    `json:"userId"`
-	Email              string    `json:"email"`
-	Status             string    `json:"status"`
-	VerificationSentAt time.Time `json:"verificationSentAt"`
+	UserID                    string    `json:"userId"`
+	Email                     string    `json:"email"`
+	Status                    string    `json:"status"`
+	VerificationSentAt        time.Time `json:"verificationSentAt"`
+	EmailVerificationRequired bool      `json:"emailVerificationRequired"`
 }
 
 // Register creates a new user account
@@ -130,13 +134,21 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Regis
 	now := time.Now()
 	userID := generateID("usr")
 
+	// Determine initial user status based on email verification config
+	initialStatus := model.UserStatusPendingVerification
+	emailVerified := false
+	if !s.cfg.EmailVerification.Enabled {
+		initialStatus = model.UserStatusActive
+		emailVerified = true
+	}
+
 	// Create user
 	user := &model.User{
 		ID:            userID,
 		Email:         email,
-		EmailVerified: false,
+		EmailVerified: emailVerified,
 		PasswordHash:  passwordHash,
-		Status:        model.UserStatusPendingVerification,
+		Status:        initialStatus,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -163,13 +175,22 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Regis
 		// Don't fail registration if profile creation fails
 	}
 
-	s.log.Info().Str("user_id", userID).Str("email", email).Msg("user registered")
+	// Send verification OTP if email verification is enabled
+	if s.cfg.EmailVerification.Enabled && s.emailVerifySvc != nil {
+		if err := s.emailVerifySvc.SendVerificationOTP(ctx, userID, email); err != nil {
+			s.log.Error().Err(err).Str("user_id", userID).Msg("failed to send verification OTP")
+			// Don't fail registration if email sending fails — user can request resend
+		}
+	}
+
+	s.log.Info().Str("user_id", userID).Str("email", email).Bool("verification_required", s.cfg.EmailVerification.Enabled).Msg("user registered")
 
 	return &RegisterResponse{
-		UserID:             userID,
-		Email:              email,
-		Status:             string(model.UserStatusPendingVerification),
-		VerificationSentAt: now,
+		UserID:                    userID,
+		Email:                     email,
+		Status:                    string(initialStatus),
+		VerificationSentAt:        now,
+		EmailVerificationRequired: s.cfg.EmailVerification.Enabled,
 	}, nil
 }
 

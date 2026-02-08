@@ -55,8 +55,14 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(email, password);
-      if (returnUrl) {
+      const response = await register(email, password);
+      if (response.emailVerificationRequired) {
+        // Redirect to email verification page
+        navigate('/verify-email', {
+          replace: true,
+          state: { userId: response.userId, email: response.email },
+        });
+      } else if (returnUrl) {
         window.location.href = returnUrl;
       } else {
         navigate('/dashboard', { replace: true });

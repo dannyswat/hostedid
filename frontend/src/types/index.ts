@@ -61,6 +61,23 @@ export interface RegisterResponse {
   email: string;
   status: string;
   verificationSentAt: string;
+  emailVerificationRequired: boolean;
+}
+
+// Email verification types
+export interface VerifyEmailRequest {
+  userId: string;
+  code: string;
+}
+
+export interface VerifyEmailResponse {
+  message: string;
+  emailVerified: boolean;
+}
+
+export interface ResendVerificationRequest {
+  userId: string;
+  email: string;
 }
 
 // Token types

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
-import type { User, MFAMethod, LoginResponse } from '../types';
+import type { User, MFAMethod, LoginResponse, RegisterResponse } from '../types';
 import authService from '../services/authService';
 import { tokenStorage } from '../services/api';
 
@@ -16,7 +16,7 @@ interface AuthContextType {
     preferredMethod?: MFAMethod;
     returnUrl?: string;
   }>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -81,11 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { mfaRequired: false, returnUrl: (response as LoginResponse).returnUrl };
   };
 
-  const register = async (email: string, password: string) => {
-    await authService.register({ email, password });
-    // After registration, log the user in
-    const currentUser = await authService.getCurrentUser();
-    setUser(currentUser);
+  const register = async (email: string, password: string): Promise<RegisterResponse> => {
+    const response = await authService.register({ email, password });
+    // Only auto-login if email verification is not required
+    if (!response.emailVerificationRequired) {
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+    }
+    return response;
   };
 
   const logout = async () => {

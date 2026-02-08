@@ -10,13 +10,15 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Log      LogConfig      `mapstructure:"log"`
-	Security SecurityConfig `mapstructure:"security"`
-	MFA      MFAConfig      `mapstructure:"mfa"`
-	Cookie   CookieConfig   `mapstructure:"cookie"`
+	Server            ServerConfig            `mapstructure:"server"`
+	Database          DatabaseConfig          `mapstructure:"database"`
+	Redis             RedisConfig             `mapstructure:"redis"`
+	Log               LogConfig               `mapstructure:"log"`
+	Security          SecurityConfig          `mapstructure:"security"`
+	MFA               MFAConfig               `mapstructure:"mfa"`
+	Cookie            CookieConfig            `mapstructure:"cookie"`
+	Email             EmailConfig             `mapstructure:"email"`
+	EmailVerification EmailVerificationConfig `mapstructure:"email_verification"`
 }
 
 // ServerConfig holds HTTP server configuration
@@ -132,6 +134,44 @@ type CookieConfig struct {
 	AllowedReturnURLs []string `mapstructure:"allowed_return_urls"`
 }
 
+// EmailConfig holds email sending configuration
+type EmailConfig struct {
+	// Provider is the email provider to use: "gmail", "smtp", etc.
+	Provider string `mapstructure:"provider"`
+	// AppName is the application name shown in emails (defaults to "HostedID")
+	AppName string `mapstructure:"app_name"`
+	// Gmail holds Gmail-specific configuration
+	Gmail GmailEmailConfig `mapstructure:"gmail"`
+}
+
+// GmailEmailConfig holds Gmail API configuration
+type GmailEmailConfig struct {
+	// CredentialsJSON is the service account credentials JSON content
+	CredentialsJSON string `mapstructure:"credentials_json"`
+	// ClientID for OAuth2 token-based auth (alternative to service account)
+	ClientID string `mapstructure:"client_id"`
+	// ClientSecret for OAuth2 token-based auth
+	ClientSecret string `mapstructure:"client_secret"`
+	// RefreshToken for OAuth2 token-based auth
+	RefreshToken string `mapstructure:"refresh_token"`
+	// SenderAddress is the "From" email address
+	SenderAddress string `mapstructure:"sender_address"`
+	// SenderName is the display name for the sender
+	SenderName string `mapstructure:"sender_name"`
+}
+
+// EmailVerificationConfig holds email verification settings
+type EmailVerificationConfig struct {
+	// Enabled controls whether email verification is required on registration
+	Enabled bool `mapstructure:"enabled"`
+	// OTPLength is the number of digits in the OTP code (default: 6)
+	OTPLength int `mapstructure:"otp_length"`
+	// OTPTTL is how long the OTP is valid (default: 10m)
+	OTPTTL time.Duration `mapstructure:"otp_ttl"`
+	// ResendCooldown is the minimum time between resend attempts (default: 60s)
+	ResendCooldown time.Duration `mapstructure:"resend_cooldown"`
+}
+
 // Load reads configuration from file and environment variables
 func Load() (*Config, error) {
 	v := viper.New()
@@ -222,4 +262,16 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cookie.secure", false)
 	v.SetDefault("cookie.same_site", "lax")
 	v.SetDefault("cookie.allowed_return_urls", []string{"http://localhost"})
+
+	// Email defaults
+	v.SetDefault("email.provider", "gmail")
+	v.SetDefault("email.app_name", "HostedID")
+	v.SetDefault("email.gmail.sender_address", "")
+	v.SetDefault("email.gmail.sender_name", "HostedID")
+
+	// Email verification defaults
+	v.SetDefault("email_verification.enabled", false)
+	v.SetDefault("email_verification.otp_length", 6)
+	v.SetDefault("email_verification.otp_ttl", "10m")
+	v.SetDefault("email_verification.resend_cooldown", "60s")
 }
