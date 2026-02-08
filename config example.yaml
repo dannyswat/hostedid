@@ -1,0 +1,86 @@
+# config.yaml - Development configuration for HostedID
+# Copy this file to config.yaml and adjust as needed
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "hostedid"
+  user: "postgres"
+  password: "postgres"
+  ssl_mode: "disable"
+  max_connections: 25
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+log:
+  level: "debug"
+  format: "text"  # "text" for development, "json" for production
+
+security:
+  password:
+    min_length: 12
+    argon2_memory: 65536      # 64 MB
+    argon2_iterations: 3
+    argon2_parallelism: 4
+  tokens:
+    access_token_ttl: "15m"
+    refresh_token_ttl: "168h"  # 7 days
+    signing_algorithm: "hybrid"
+    issuer: "hostedid-dev"
+  rate_limiting:
+    enabled: true
+    default_limit: 100
+    default_window: "1m"
+
+mfa:
+  totp:
+    issuer: "HostedID Dev"
+    digits: 6
+    period: 30
+  webauthn:
+    rp_id: "localhost"
+    rp_origins:
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+    rp_name: "HostedID Development"
+
+cookie:
+  domain: ""                  # empty = host-only in dev; set to ".example.com" in production
+  secure: false               # set to true in production (requires HTTPS)
+  same_site: "lax"            # "lax", "strict", or "none"
+  allowed_return_urls:
+    - "http://localhost"
+
+# Email sending configuration
+email:
+  provider: "gmail"           # email provider: "gmail" (more providers in future)
+  app_name: "HostedID"        # application name shown in emails
+  gmail:
+    # Option 1: Service account with domain-wide delegation
+    credentials_json: ""      # paste JSON content or set via HOSTEDID_EMAIL_GMAIL_CREDENTIALS_JSON env var
+    # Option 2: OAuth2 client credentials + refresh token
+    client_id: ""             # set via HOSTEDID_EMAIL_GMAIL_CLIENT_ID env var
+    client_secret: ""         # set via HOSTEDID_EMAIL_GMAIL_CLIENT_SECRET env var
+    refresh_token: ""         # set via HOSTEDID_EMAIL_GMAIL_REFRESH_TOKEN env var
+    # Sender info
+    sender_address: ""        # e.g. "noreply@yourdomain.com"
+    sender_name: "HostedID"
+
+# Email verification settings
+email_verification:
+  enabled: false              # set to true to require email OTP verification on registration
+  otp_length: 6               # number of digits in verification code
+  otp_ttl: "10m"              # how long the OTP is valid
+  resend_cooldown: "60s"      # minimum time between resend requests
